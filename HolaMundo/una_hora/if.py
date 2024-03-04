@@ -1,3 +1,4 @@
+"""Ciclo if"""
 # Se crea variable y se asigna su valor con pase a lo que el usuario ingrese
 calificacion = input("Ingrese calificacion del alumno: ")
 # Se convierte la entra de usuario a decimales
