@@ -30,3 +30,15 @@ FALSO = False
 
 print(VERDADERO)
 print(FALSO)
+
+# También es posible definir el tipo de la variable, la sintaxis
+# para hacerlo es nombre_variable: tipo y valor
+# para mejor lectura de números grandes se puede usar _ cada 3 dígitos
+
+N: int = 1_000_000
+
+print(N)
+
+# Para usar separadores al imprimir números se puede usar f"{nombre_variable:separador}"
+
+print(f"{N:,}")

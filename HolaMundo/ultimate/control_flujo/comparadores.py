@@ -24,6 +24,6 @@ print(N1 >= 10)
 
 print(N2 == 20)
 
-# Evalua si la variable 2 es igual a 15
+# Evalua si la variable 2 es distinta a 15
 
-print(N2 == 15)
+print(N2 != 15)
