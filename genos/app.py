@@ -3,7 +3,7 @@ import tkinter as tk
 from menus import crear_menus
 from frames.app_home import Home
 from frames.app_endpoint_tool import EndPointTool
-from frames.app_endpoint_test import EndPointTest
+from frames.app_test_endpoint import EndPointTest
 from frames.app_compare_report import CompareReport
 from logging_config import configurar_logger
 
@@ -19,7 +19,7 @@ class Genos(tk.Tk):
         self.logger = configurar_logger()
         self.logger.info("Iniciando GENOS %s", version)
         self.title("GENOS")
-        self.geometry("450x600")
+        self.geometry("600x600")
         self.iconbitmap("bender.ico")
         self.frames = {}
         self.crear_frames()

@@ -7,6 +7,32 @@ import csv
 from PIL import Image, ImageTk
 
 
+def configurar_logger():
+    """Función para configurar log"""
+    SISTEMA = "Genos"
+
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
+    # Formato del log
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    # Manejador para el archivo principal
+    file_handler = logging.FileHandler(f"{SISTEMA.lower()}.log")
+    file_handler.setFormatter(formatter)
+
+    # Manejador para la consola
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+
+    # Añadir los manejadores al logger
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
+
+    return logger
+
+
 class EndPointTool(tk.Frame):
     """Pantalla para agregar y editar Endpoints"""
 
@@ -23,13 +49,15 @@ class EndPointTool(tk.Frame):
 
         # Crear título
         label_titulo = tk.Label(
-            container, text="Agregar y Editar Endpoints", font=("Helvetica", 24))
+            container, text="Agregar y Editar Endpoints", font=("Helvetica", 24, "bold"))
         label_titulo.grid(row=0, columnspan=2, pady=5, sticky="n")
 
         # Widgets para ingresar alias y URL del endpoint
-        self.label_alias = tk.Label(container, text="Alias del Endpoint:")
+        self.label_alias = tk.Label(
+            container, text="Alias del Endpoint:", font=("Helvetica", 12, "bold"))
         self.entry_alias = tk.Entry(container, width=30)
-        self.label_url = tk.Label(container, text="URL del Endpoint:")
+        self.label_url = tk.Label(
+            container, text="URL del Endpoint:", font=("Helvetica", 12, "bold"))
         self.entry_url = tk.Entry(container, width=30)
 
         # Ruta del directorio actual

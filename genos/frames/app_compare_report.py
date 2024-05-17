@@ -1,14 +1,39 @@
-"""Herramienta para comparar reportes"""
+"""Aplicación para comparar dos reportes"""
 import tkinter as tk
 import logging
-from tkinter import filedialog
-from tkinter import messagebox, END
+from tkinter import filedialog, messagebox, END
 import os
 import pandas as pd
 import openpyxl
 from openpyxl.styles import PatternFill
 from PIL import Image, ImageTk
 import xlrd
+
+
+def configurar_logger():
+    """Función para configurar log"""
+    SISTEMA = "Genos"
+
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
+    # Formato del log
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    # Manejador para el archivo principal
+    file_handler = logging.FileHandler(f"{SISTEMA.lower()}.log")
+    file_handler.setFormatter(formatter)
+
+    # Manejador para la consola
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+
+    # Añadir los manejadores al logger
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
+
+    return logger
 
 
 class CompareReport(tk.Frame):
@@ -44,13 +69,14 @@ class CompareReport(tk.Frame):
         clean_icon = ImageTk.PhotoImage(clean_image)
 
         # Widgets para buscar los reportes a comparar
-        self.label_base = tk.Label(container, text="Seleccione reporte base")
+        self.label_base = tk.Label(
+            container, text="Seleccione reporte base", font=("Helvetica", 12, "bold"))
         self.entry_base = tk.Entry(container, width=30)
         self.button_search_base = tk.Button(
             container, image=search_icon, command=lambda: self.load_file(self.entry_base))
         self.button_search_base.image = search_icon
         self.label_compare = tk.Label(
-            container, text="Seleccione reporte a comparar")
+            container, text="Seleccione reporte a comparar", font=("Helvetica", 12, "bold"))
         self.entry_compare = tk.Entry(container, width=30)
         self.button_search_compare = tk.Button(
             container, image=search_icon, command=lambda: self.load_file(self.entry_compare))
@@ -142,6 +168,8 @@ class CompareReport(tk.Frame):
             highlight = PatternFill(start_color='FFFF00',
                                     end_color='FFFF00', fill_type='solid')
 
+            differences_found = False  # Bandera para indicar si se encontraron diferencias
+
             # Recorrer todas las celdas y comparar
             for row in range(max(sheet1.nrows, sheet2.nrows)):
                 for col in range(max(sheet1.ncols, sheet2.ncols)):
@@ -149,6 +177,7 @@ class CompareReport(tk.Frame):
                     value2 = sheet2.cell_value(row, col)
 
                     if value1 != value2:
+                        differences_found = True
                         result_cell = ws_result.cell(row=row+1, column=col+1)
                         result_cell.value = f"{value1} -> {value2}"
                         result_cell.fill = highlight
@@ -156,14 +185,22 @@ class CompareReport(tk.Frame):
                         result_cell = ws_result.cell(row=row+1, column=col+1)
                         result_cell.value = value1
 
-            # Guardar el resultado
-            result_path_with_format = f"Comparativo_{base_name}.xlsx"
-            wb_result.save(result_path_with_format)
-
-            messagebox.showinfo("Éxito",
-                                f"Revisión completada!\nLos resultados se han guardado en:\n{
-                                    result_path_with_format}")
+            if differences_found:
+                # Guardar el resultado
+                result_path_with_format = f"Comparativo_{base_name}.xlsx"
+                wb_result.save(result_path_with_format)
+                messagebox.showinfo("Éxito",
+                                    f"Revisión completada!\nLos resultados se han guardado en:\n{
+                                        result_path_with_format}")
+                self.logger.info("Se han encontrado diferencias, los resultados se han guardado en %s",
+                                 result_path_with_format)
+            else:
+                messagebox.showinfo("Sin diferencias",
+                                    "No se encontraron diferencias entre los reportes.")
+                self.logger.info(
+                    "No se encontraron diferencias entre los reportes.")
 
         except (pd.errors.ParserError, openpyxl.utils.exceptions.InvalidFileException) as e:
             messagebox.showerror(
                 "Error", "Error al leer archivos Excel: " + str(e))
+            self.logger.info("Error al leer archivos Excel.")

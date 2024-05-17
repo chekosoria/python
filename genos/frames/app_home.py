@@ -5,6 +5,32 @@ import os
 from PIL import Image, ImageTk
 
 
+def configurar_logger():
+    """Función para configurar log"""
+    SISTEMA = "Genos"
+
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
+    # Formato del log
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    # Manejador para el archivo principal
+    file_handler = logging.FileHandler(f"{SISTEMA.lower()}.log")
+    file_handler.setFormatter(formatter)
+
+    # Manejador para la consola
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+
+    # Añadir los manejadores al logger
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
+
+    return logger
+
+
 class Home(tk.Frame):
     """Definición de página principal"""
 
@@ -16,7 +42,7 @@ class Home(tk.Frame):
 
         # Crear título
         label_titulo = tk.Label(
-            self, text="Bienvenido a Genos", font=("Helvetica", 24))
+            self, text="Bienvenido a Genos", font=("Helvetica", 24, "bold"))
         label_titulo.pack(pady=20)
 
         # Crear un frame para contener la imagen y centrarla
