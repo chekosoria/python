@@ -12,7 +12,7 @@ import xlrd
 
 def configurar_logger():
     """Función para configurar log"""
-    SISTEMA = "Genos"
+    sistema = "Genos"
 
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
@@ -22,7 +22,7 @@ def configurar_logger():
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     # Manejador para el archivo principal
-    file_handler = logging.FileHandler(f"{SISTEMA.lower()}.log")
+    file_handler = logging.FileHandler(f"{sistema.lower()}.log")
     file_handler.setFormatter(formatter)
 
     # Manejador para la consola

@@ -1,17 +1,18 @@
 """Pantalla de la herramienta para probar Endpoints"""
 import tkinter as tk
 import logging
-from tkinter import messagebox, END
+from tkinter import ttk, messagebox, END
 import os
+import subprocess
 import csv
 from datetime import datetime, timedelta
-import subprocess
 from PIL import Image, ImageTk
+from utils.db_utils import inicializar_base_de_datos, obtener_conexion
 
 
 def configurar_logger():
     """Función para configurar log"""
-    SISTEMA = "Genos"
+    sistema = "Genos"
 
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
@@ -21,7 +22,7 @@ def configurar_logger():
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     # Manejador para el archivo principal
-    file_handler = logging.FileHandler(f"{SISTEMA.lower()}.log")
+    file_handler = logging.FileHandler(f"{sistema.lower()}.log")
     file_handler.setFormatter(formatter)
 
     # Manejador para la consola
@@ -35,17 +36,14 @@ def configurar_logger():
     return logger
 
 
-class EndPointTest(tk.Frame):
+class TestEndPoint(tk.Frame):
     """Pantalla para probar Endpoints"""
 
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
-        # self.logger = configurar_logger()
-        # self.logger.info("Inicializando pantalla para probar Endpoints")
         self.logger = logging.getLogger(__name__)
-        self.logger.info(
-            "Inicializando pantalla para probar Endpoints")
+        self.logger.info("Inicializando pantalla para probar Endpoints")
 
         # Crear contenedor principal para centrar los elementos
         container = tk.Frame(self)
@@ -76,16 +74,22 @@ class EndPointTest(tk.Frame):
         self.button_help.image = help_icon
         self.button_exe.image = exe_icon
 
-        # Widget para mostrar y seleccionar los endpoints seleccionados
+        # Widget para mostrar y seleccionar los endpoints agregados
         self.label_select = tk.Label(
             container, text="Seleccionar Endpoint(s):", font=("Helvetica", 12, "bold"))
-        self.listbox_endpoints = tk.Listbox(container, width=70, height=10)
-
-        # Variable para almacenar los endpoints seleccionados
-        self.endpoint_var = tk.StringVar(container)
-        self.endpoint_var.set("")
-        self.listbox_endpoints = tk.Listbox(
-            container, selectmode=tk.MULTIPLE, width=70)
+        self.tree_endpoints = ttk.Treeview(container, columns=(
+            "ID", "Alias", "URL", "Parametros", "URL descarga"),
+            show='headings', selectmode="extended")
+        self.tree_endpoints.heading("ID", text="ID")
+        self.tree_endpoints.heading("Alias", text="Alias")
+        self.tree_endpoints.heading("URL", text="URL")
+        self.tree_endpoints.heading("Parametros", text="Parámetros")
+        self.tree_endpoints.heading("URL descarga", text="URL descarga")
+        self.tree_endpoints.column("ID", width=50)
+        self.tree_endpoints.column("Alias", width=150)
+        self.tree_endpoints.column("URL", width=250)
+        self.tree_endpoints.column("Parametros", width=200)
+        self.tree_endpoints.column("URL descarga", width=200)
 
         # Widget para mostrar el estado de la prueba
         self.label_status = tk.Label(
@@ -96,8 +100,8 @@ class EndPointTest(tk.Frame):
         # Ubicar los widgets en el contenedor
         self.button_help.grid(row=2, column=0, columnspan=2, pady=5)
         self.label_select.grid(row=3, column=0, sticky="w")
-        self.listbox_endpoints.grid(
-            row=4, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
+        self.tree_endpoints.grid(
+            row=4, columnspan=3, padx=5, pady=5, sticky="nsew")
         self.button_exe.grid(row=5, column=0, columnspan=2, pady=5)
         self.label_status.grid(row=6, column=0, sticky="w")
         self.status_text.grid(row=7, column=0, columnspan=2,
@@ -115,10 +119,17 @@ class EndPointTest(tk.Frame):
         container.grid_columnconfigure(0, weight=1)
         container.grid_columnconfigure(1, weight=1)
 
-        # Inicializar diccionario de endpoints
-        self.endpoints = {}
+        # Inicializar base de datos
+        inicializar_base_de_datos()
 
         # Cargar los endpoints existentes
+        self.cargar_endpoints()
+
+        # Vincular el método cargar_endpoints al evento de mostrar la pantalla
+        self.bind("<<ShowFrame>>", self.on_show_frame)
+
+    def on_show_frame(self, event):
+        """Cargar los endpoints existentes desde la base de datos al mostrar la pantalla"""
         self.cargar_endpoints()
 
     def show_help(self):
@@ -140,124 +151,150 @@ class EndPointTest(tk.Frame):
         messagebox.showinfo("Ayuda", f"{individual}\n{lote}")
 
     def cargar_endpoints(self):
-        """Cargar los endpoints existentes desde el archivo de configuración"""
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        config_file = os.path.join(current_dir, "endpoints.csv")
-        if os.path.exists(config_file):
-            with open(config_file, 'r', encoding="latin-1") as csvfile:
-                csv_reader = csv.reader(csvfile)
-                for row in csv_reader:
-                    self.endpoints[row[0]] = row[1]
-        self.update_listbox_endpoints()
-
-    def update_listbox_endpoints(self):
-        """Funcion para actualizar la lista de endpoints disponibles"""
-        self.listbox_endpoints.delete(0, END)
-        for endpoint in self.endpoints.keys():
-            self.listbox_endpoints.insert(END, endpoint)
-
-    def get_endpoint_from_csv(self, alias):
-        """Funcion para obtener la URL de los endpoints existentes a partir del alias"""
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        config_file = os.path.join(current_dir, "endpoints.csv")
-        if os.path.exists(config_file):
-            with open(config_file, 'r', encoding="latin-1") as csvfile:
-                csv_reader = csv.reader(csvfile)
-                for row in csv_reader:
-                    if row[0] == alias:
-                        return row[1]
-        return None
+        """Cargar los endpoints existentes desde la base de datos"""
+        self.tree_endpoints.delete(
+            *self.tree_endpoints.get_children())  # Limpiar Treeview
+        with obtener_conexion() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, alias, url, parametros, download_url FROM endpoints")
+            rows = cursor.fetchall()
+            for row in rows:
+                self.tree_endpoints.insert("", END, values=row)
 
     def test_endpoints(self):
-        """Funcion para probar endpoints"""
-        selected_indices = self.listbox_endpoints.curselection()
-        if not selected_indices:
+        """Función para probar endpoints"""
+        selected_items = self.tree_endpoints.selection()
+        if not selected_items:
             messagebox.showerror(
                 "Error", "Seleccione al menos un endpoint para probar.")
             return
 
-        selected_endpoints = [self.listbox_endpoints.get(
-            i) for i in selected_indices]
-        for alias in selected_endpoints:
-            url = self.endpoints.get(alias)
-            if url:
-                start_time = datetime.now()
-                self.status_text.insert(
-                    tk.END, f"Iniciando prueba del endpoint {alias}...\n")
-                self.status_text.see(tk.END)
-                self.master.update()
-                retry_count = 3  # Numero maximo de reintentos
-                retry = 0
-                success = False
-                while retry < retry_count and not success:
-                    try:
-                        created_file = f"{alias}.txt"
-                        command = ["curl", "-o", created_file, "-k", url]
-                        process = subprocess.Popen(
-                            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-                        stdout, stderr = process.communicate()
-                        if process.returncode == 0:
-                            end_time = datetime.now()
-                            elapsed_time_seconds = (
-                                end_time - start_time).total_seconds()
+        for item in selected_items:
+            endpoint_values = self.tree_endpoints.item(item, "values")
+            alias = endpoint_values[1]
+            url = endpoint_values[2]
+            params = endpoint_values[3]
+            download = endpoint_values[4]
+            start_time = datetime.now()
+            self.status_text.insert(
+                tk.END, f"Iniciando prueba del endpoint {alias}...\n")
+            self.status_text.see(tk.END)
+            self.master.update()
+            retry_count = 3  # Número máximo de reintentos
+            retry = 0
+            success = False
+            while retry < retry_count and not success:
+                try:
+                    created_file = f"{alias}.txt"
+                    command = ["curl", "-o", created_file, "-k", url + params]
+                    process = subprocess.Popen(
+                        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+                    stdout, stderr = process.communicate()
+                    if process.returncode == 0:
+                        end_time = datetime.now()
+                        elapsed_time_seconds = (
+                            end_time - start_time).total_seconds()
 
-                            # Convertir a formato hh:mm:ss
-                            elapsed_timedelta = timedelta(
-                                seconds=elapsed_time_seconds)
-                            elapsed_time_formatted = str(elapsed_timedelta)
+                        # Convertir a formato hh:mm:ss
+                        elapsed_timedelta = timedelta(
+                            seconds=elapsed_time_seconds)
+                        elapsed_time_formatted = str(elapsed_timedelta)
 
-                            # Leer el contenido del archivo para obtener el nombre
-                            # generado por el endpoint
-                            with open(created_file, "r", encoding="latin-1") as f:
-                                # Leer y quitar espacios y caracteres de nueva línea
-                                generated_filename = f.readline().strip()
+                        # Leer el contenido del archivo para obtener el nombre
+                        # generado por el endpoint
+                        with open(created_file, "r", encoding="latin-1") as f:
+                            # Leer y quitar espacios y caracteres de nueva línea
+                            generated_filename = f.readline().strip()
 
-                            self.status_text.insert(
-                                tk.END, f"{datetime.now(
-                                )} - Se ha generado el reporte {alias} en {
-                                    elapsed_time_formatted} segundos\n"
-                            )
-
-                            # Registrar el resultado en el log y añadir el nombre del
-                            # archivo generado por el endpoint
-                            self.download_file(
-                                alias,
-                                start_time,
-                                end_time,
-                                elapsed_time_formatted,
-                                "Completado",
-                                generated_filename,
-                            )
-                            success = True
-
-                            # Eliminar el archivo para evitar acumulación de archivos basura
-                            if os.path.exists(created_file):
-                                os.remove(created_file)
-                        else:
-                            self.status_text.insert(tk.END, f"Error al generar el reporte {
-                                                    alias}: {stderr.decode()}\n")
-                            retry += 1
-                            if retry < retry_count:
-                                self.status_text.insert(
-                                    tk.END, f"Reintentando ({retry}/{retry_count})...\n")
-                    except Exception as e:
                         self.status_text.insert(
-                            tk.END, f"Error al generar el reporte {alias}: {str(e)}\n")
+                            tk.END, f"{datetime.now(
+                            )} - Se ha generado el reporte {alias} en {
+                                elapsed_time_formatted} segundos\n"
+                        )
+
+                        # Registrar el resultado en el log y añadir el nombre
+                        # del archivo generado por el endpoint
+                        self.save_result_to_csv(
+                            alias,
+                            start_time,
+                            end_time,
+                            elapsed_time_formatted,
+                            "Completado",
+                            generated_filename)
+                        success = True
+
+                        if success:
+                            try:
+                                download_command = [
+                                    "curl", "-O", "-k", download + generated_filename]
+                                process = subprocess.Popen(
+                                    download_command, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, shell=True)
+                                stdout, stderr = process.communicate()
+                                if process.returncode == 0:
+                                    end_time = datetime.now()
+                                    elapsed_time_seconds = (
+                                        end_time - start_time).total_seconds()
+
+                                    # Convertir a formato hh:mm:ss
+                                    elapsed_timedelta = timedelta(
+                                        seconds=elapsed_time_seconds)
+                                    elapsed_time_formatted = str(
+                                        elapsed_timedelta)
+
+                                    self.status_text.insert(
+                                        tk.END, f"{datetime.now()} - Se ha descargado el reporte {
+                                            generated_filename} en {
+                                                elapsed_time_formatted} segundos\n"
+                                    )
+
+                                    # Registrar el resultado en el log y añadir el nombre
+                                    # del archivo generado por el endpoint
+                                    self.save_result_to_csv(
+                                        alias,
+                                        start_time,
+                                        end_time,
+                                        elapsed_time_formatted,
+                                        "Descargado",
+                                        generated_filename)
+                                else:
+                                    self.status_text.insert(tk.END,
+                                                            f"Error al descargar el reporte {
+                                                                generated_filename}: {
+                                                                    stderr.decode()}\n")
+                            except Exception as e:
+                                self.status_text.insert(tk.END, f"Error al descargar el reporte {
+                                                        generated_filename}: {str(e)}\n")
+                                self.logger.info("Error al descargar reporte.")
+                            self.logger.info(
+                                "Reporte %s descargado.", generated_filename)
+
+                        # Eliminar el archivo para evitar acumulación de archivos basura
+                        if os.path.exists(created_file):
+                            os.remove(created_file)
+                    else:
+                        self.status_text.insert(tk.END, f"Error al generar el reporte {
+                                                alias}: {stderr.decode()}\n")
                         retry += 1
                         if retry < retry_count:
                             self.status_text.insert(
                                 tk.END, f"Reintentando ({retry}/{retry_count})...\n")
-                if not success:
-                    self.status_text.insert(tk.END, f"No se pudo generar el reporte {
-                                            alias} despues de {retry_count} intentos.\n")
-            else:
-                self.status_text.insert(
-                    tk.END, f"No se encontro la URL para el alias {alias}\n")
-        messagebox.showinfo("exito", "Prueba completada.")
+                except Exception as e:
+                    self.status_text.insert(
+                        tk.END, f"Error al generar el reporte {alias}: {str(e)}\n")
+                    retry += 1
+                    if retry < retry_count:
+                        self.status_text.insert(
+                            tk.END, f"Reintentando ({retry}/{retry_count})...\n")
+            if not success:
+                self.status_text.insert(tk.END, f"No se pudo generar el reporte {
+                                        alias} después de {retry_count} intentos.\n")
+        messagebox.showinfo("Éxito", "Prueba completada.")
         self.logger.info("Prueba completada.")
 
-    def download_file(self, alias, start_time, end_time, elapsed_time_formatted,
-                      status, generated_filename):
+    def save_result_to_csv(self, alias, start_time, end_time, elapsed_time_formatted,
+                           status, generated_filename):
         """Función para almacenar el resultado de la prueba en un CSV"""
         current_date = datetime.now().strftime("%Y-%m-%d")
         csv_filename = f"endpoint_log_{current_date}.csv"
