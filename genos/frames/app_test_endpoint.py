@@ -78,18 +78,20 @@ class TestEndPoint(tk.Frame):
         self.label_select = tk.Label(
             container, text="Seleccionar Endpoint(s):", font=("Helvetica", 12, "bold"))
         self.tree_endpoints = ttk.Treeview(container, columns=(
-            "ID", "Alias", "URL", "Parametros", "URL descarga"),
+            "ID", "Alias", "URL", "Parametros", "URL descarga", "Ambiente"),
             show='headings', selectmode="extended")
         self.tree_endpoints.heading("ID", text="ID")
         self.tree_endpoints.heading("Alias", text="Alias")
         self.tree_endpoints.heading("URL", text="URL")
         self.tree_endpoints.heading("Parametros", text="Parámetros")
         self.tree_endpoints.heading("URL descarga", text="URL descarga")
+        self.tree_endpoints.heading("Ambiente", text="Ambiente")
         self.tree_endpoints.column("ID", width=50)
         self.tree_endpoints.column("Alias", width=150)
         self.tree_endpoints.column("URL", width=250)
         self.tree_endpoints.column("Parametros", width=200)
         self.tree_endpoints.column("URL descarga", width=200)
+        self.tree_endpoints.column("Ambiente", width=200)
 
         # Widget para mostrar el estado de la prueba
         self.label_status = tk.Label(
@@ -157,7 +159,7 @@ class TestEndPoint(tk.Frame):
         with obtener_conexion() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT id, alias, url, parametros, download_url FROM endpoints")
+                "SELECT id, alias, url, parametros, download_url, ambiente FROM endpoints")
             rows = cursor.fetchall()
             for row in rows:
                 self.tree_endpoints.insert("", END, values=row)
@@ -176,6 +178,7 @@ class TestEndPoint(tk.Frame):
             url = endpoint_values[2]
             params = endpoint_values[3]
             download = endpoint_values[4]
+            env = endpoint_values[5]
             start_time = datetime.now()
             self.status_text.insert(
                 tk.END, f"Iniciando prueba del endpoint {alias}...\n")

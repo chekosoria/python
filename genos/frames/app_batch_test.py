@@ -136,20 +136,28 @@ class BatchTest(tk.Frame):
 
     def cargar_endpoints(self):
         """Cargar los endpoints existentes desde la base de datos y actualiza los comboboxes"""
-        aliases = []
         with obtener_conexion() as conn:
             cursor = conn.cursor()
+
+            # Obtener aliases para ambiente 'Prod'
             cursor.execute(
-                "SELECT alias FROM endpoints")
-            rows = cursor.fetchall()
-            aliases = [row[0] for row in rows]
+                "SELECT alias FROM endpoints WHERE ambiente = 'Prod'")
+            prod_rows = cursor.fetchall()
+            prod_aliases = [row[0] for row in prod_rows]
+            # self.logger.info(prod_aliases)
+
+            # Obtener aliases para ambiente 'Qa'
+            cursor.execute("SELECT alias FROM endpoints WHERE ambiente = 'QA'")
+            qa_rows = cursor.fetchall()
+            qa_aliases = [row[0] for row in qa_rows]
+            # self.logger.info(qa_aliases)
 
         # Actualizar los valores de los comboboxes
-        self.combo_first_endpoint['values'] = aliases
-        self.combo_second_endpoint['values'] = aliases
+            self.combo_first_endpoint['values'] = prod_aliases
+            self.combo_second_endpoint['values'] = qa_aliases
 
-        self.combo_first_endpoint.set('')  # Limpiar selección actual
-        self.combo_second_endpoint.set('')  # Limpiar selección actual
+            self.combo_first_endpoint.set('')  # Limpiar selección actual
+            self.combo_second_endpoint.set('')  # Limpiar selección actual
 
     def test_endpoints(self):
         """Función para probar endpoints"""

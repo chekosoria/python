@@ -21,7 +21,8 @@ def inicializar_base_de_datos():
                 alias TEXT UNIQUE NOT NULL,
                 url TEXT NOT NULL,
                 parametros TEXT NOT NULL,
-                download_url TEXT NOT NULL
+                download_url TEXT NOT NULL,
+                ambiente TEXT NOT NULL
             )
         """)
         conn.commit()

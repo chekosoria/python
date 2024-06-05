@@ -21,7 +21,7 @@ class Genos(tk.Tk):
         self.logger = configurar_logger()
         self.logger.info("Iniciando GENOS %s", version)
         self.title("GENOS")
-        self.geometry("880x700")
+        self.geometry("1100x800")
         self.iconbitmap("bender.ico")
         self.frames = {}
         self.crear_frames()

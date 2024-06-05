@@ -70,6 +70,17 @@ class AddEndPoint(tk.Frame):
         self.label_download_url = tk.Label(
             container, text="URL de descarga:", font=("Helvetica", 12, "bold"))
         self.entry_download_url = tk.Entry(container, width=30)
+        self.label_environment = tk.Label(
+            container, text="Ambiente:", font=("Helvetica", 12, "bold"))
+        self.combobox_environment = ttk.Combobox(container,
+                                                 width=30,
+                                                 state="readonly",
+                                                 values=[
+                                                     "None",
+                                                     "Prod",
+                                                     "QA"
+                                                 ])
+        self.combobox_environment.current(0)
 
         # Ruta del directorio actual
         current_directory = os.path.dirname(os.path.realpath(__file__))
@@ -98,19 +109,20 @@ class AddEndPoint(tk.Frame):
         self.button_clean.image = clean_icon
 
         # Widget para mostrar y seleccionar los endpoints agregados
-        self.tree = ttk.Treeview(container, columns=(
-            "ID", "Alias", "URL", "Parametros", "URL descarga"), show='headings')
-        self.tree.heading("ID", text="ID")
-        self.tree.heading("Alias", text="Alias")
-        self.tree.heading("URL", text="URL")
-        self.tree.heading("Parametros", text="Parámetros")
-        self.tree.heading("URL descarga", text="URL descarga")
-        self.tree.column("ID", width=50)
-        self.tree.column("Alias", width=150)
-        self.tree.column("URL", width=250)
-        self.tree.column("Parametros", width=200)
-        self.tree.column("URL descarga", width=200)
-        # self.tree.bind("<Double-1>", self.on_double_click)
+        self.tree_endpoints = ttk.Treeview(container, columns=(
+            "ID", "Alias", "URL", "Parametros", "URL descarga", "Ambiente"), show='headings')
+        self.tree_endpoints.heading("ID", text="ID")
+        self.tree_endpoints.heading("Alias", text="Alias")
+        self.tree_endpoints.heading("URL", text="URL")
+        self.tree_endpoints.heading("Parametros", text="Parámetros")
+        self.tree_endpoints.heading("URL descarga", text="URL descarga")
+        self.tree_endpoints.heading("Ambiente", text="Ambiente")
+        self.tree_endpoints.column("ID", width=50)
+        self.tree_endpoints.column("Alias", width=150)
+        self.tree_endpoints.column("URL", width=250)
+        self.tree_endpoints.column("Parametros", width=200)
+        self.tree_endpoints.column("URL descarga", width=200)
+        self.tree_endpoints.column("Ambiente", width=200)
 
         # Ubicar los widgets en el contenedor
         self.label_id.grid(row=1, column=0, padx=5, pady=5, sticky="w")
@@ -128,10 +140,15 @@ class AddEndPoint(tk.Frame):
             row=8, column=0, padx=5, pady=5, sticky="w")
         self.entry_download_url.grid(row=9, columnspan=3,
                                      padx=5, pady=5, sticky="nsew")
-        self.button_add_endpoint.grid(row=10, column=0, pady=5, sticky="e")
-        self.button_cancel.grid(row=10, column=1, pady=5, sticky="w")
-        self.button_clean.grid(row=10, column=2, pady=5, sticky="e")
-        self.tree.grid(row=11, columnspan=3, padx=5, pady=5, sticky="nsew")
+        self.label_environment.grid(
+            row=10, column=0, padx=5, pady=5, sticky="w")
+        self.combobox_environment.grid(row=11, columnspan=3,
+                                       padx=5, pady=5, sticky="nsew")
+        self.button_add_endpoint.grid(row=12, column=0, pady=5, sticky="e")
+        self.button_cancel.grid(row=12, column=1, pady=5, sticky="w")
+        self.button_clean.grid(row=12, column=2, pady=5, sticky="e")
+        self.tree_endpoints.grid(row=13, columnspan=3,
+                                 padx=5, pady=5, sticky="nsew")
 
         # Inicializar base de datos
         inicializar_base_de_datos()
@@ -152,6 +169,7 @@ class AddEndPoint(tk.Frame):
         container.grid_rowconfigure(9, weight=1)
         container.grid_rowconfigure(10, weight=1)
         container.grid_rowconfigure(11, weight=1)
+        container.grid_rowconfigure(12, weight=1)
         container.grid_columnconfigure(0, weight=1)
         container.grid_columnconfigure(1, weight=1)
         container.grid_columnconfigure(2, weight=1)
@@ -172,14 +190,15 @@ class AddEndPoint(tk.Frame):
 
     def cargar_endpoints(self):
         """Cargar los endpoints existentes desde la base de datos"""
-        self.tree.delete(*self.tree.get_children())  # Limpiar Treeview
+        self.tree_endpoints.delete(
+            *self.tree_endpoints.get_children())  # Limpiar Treeview
         with obtener_conexion() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT id, alias, url, parametros, download_url FROM endpoints")
+                "SELECT id, alias, url, parametros, download_url, ambiente FROM endpoints")
             rows = cursor.fetchall()
             for row in rows:
-                self.tree.insert("", tk.END, values=row)
+                self.tree_endpoints.insert("", tk.END, values=row)
 
     def guardar_cambios(self):
         """Guardar los cambios realizados en el registro"""
@@ -187,6 +206,7 @@ class AddEndPoint(tk.Frame):
         url = self.entry_url.get()
         params = self.entry_params.get()
         download_url = self.entry_download_url.get()
+        env = self.combobox_environment.get()
 
         if alias and url:
             try:
@@ -194,9 +214,9 @@ class AddEndPoint(tk.Frame):
                     cursor = conn.cursor()
                     cursor.execute(
                         """INSERT INTO endpoints
-                           (alias,url,parametros,download_url)
-                           VALUES (?,?,?,?)""",
-                        (alias, url, params, download_url))
+                           (alias,url,parametros,download_url,ambiente)
+                           VALUES (?,?,?,?,?)""",
+                        (alias, url, params, download_url, env))
                     conn.commit()
                 messagebox.showinfo(
                     "Éxito", "Endpoint agregado correctamente.")
@@ -220,6 +240,7 @@ class AddEndPoint(tk.Frame):
         self.entry_url.delete(0, tk.END)
         self.entry_params.delete(0, tk.END)
         self.entry_download_url.delete(0, tk.END)
+        self.combobox_environment.current(0)
         self.selected_alias = None
         self.selected_id = None
 
