@@ -36,14 +36,15 @@ def configurar_logger():
     return logger
 
 
-class TestEndPoint(tk.Frame):
-    """Pantalla para probar Endpoints"""
+class TestEndPointAi(tk.Frame):
+    """Pantalla para probar Endpoints de Anexos individuales"""
 
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
         self.logger = logging.getLogger(__name__)
-        self.logger.info("Inicializando pantalla para probar Endpoints")
+        self.logger.info(
+            "Inicializando pantalla para probar Endpoints de Anexos individuales")
 
         # Crear contenedor principal para centrar los elementos
         container = tk.Frame(self)
@@ -51,28 +52,41 @@ class TestEndPoint(tk.Frame):
 
         # Crear título
         label_titulo = tk.Label(
-            container, text="Probar Endpoints", font=("Helvetica", 24, "bold"))
+            container, text="Probar Endpoints de Anexos individuales",
+            font=("Helvetica", 24, "bold"))
         label_titulo.grid(row=0, column=0, columnspan=2, pady=20)
 
         # Ruta del directorio actual
         current_directory = os.path.dirname(os.path.realpath(__file__))
 
+        # Ruta del directorio principal
+        pack_directory = os.path.abspath(os.path.join(current_directory, '..'))
+
+        # Ruta del directorio media
+        media_directory = os.path.join(pack_directory, 'media')
+
         # Cargar y convertir el icono
-        icon_path = os.path.join(current_directory, "help.png")
+        icon_path = os.path.join(media_directory, "help.png")
         help_image = Image.open(icon_path)
         help_icon = ImageTk.PhotoImage(help_image)
-        icon_exe_path = os.path.join(current_directory, "play.png")
+        icon_exe_path = os.path.join(media_directory, "play.png")
         exe_image = Image.open(icon_exe_path)
         exe_icon = ImageTk.PhotoImage(exe_image)
+        icon_clean_path = os.path.join(media_directory, "clean.png")
+        clean_image = Image.open(icon_clean_path)
+        clean_icon = ImageTk.PhotoImage(clean_image)
 
         # Crear botón con icono
         self.button_help = tk.Button(
             container, image=help_icon, command=self.show_help)
         self.button_exe = tk.Button(
             container, image=exe_icon, command=self.test_endpoints)
+        self.button_clean = tk.Button(
+            container, image=clean_icon, command=self.clean_screen)
         # Referencia para evitar que se recolecte basura
         self.button_help.image = help_icon
         self.button_exe.image = exe_icon
+        self.button_clean.image = clean_icon
 
         # Widget para mostrar y seleccionar los endpoints agregados
         self.label_select = tk.Label(
@@ -108,6 +122,8 @@ class TestEndPoint(tk.Frame):
         self.label_status.grid(row=6, column=0, sticky="w")
         self.status_text.grid(row=7, column=0, columnspan=2,
                               padx=5, pady=5, sticky="nsew")
+        self.button_clean.grid(
+            row=8, column=0, columnspan=2, pady=5)
 
         # Centrar el contenedor en la ventana principal
         container.grid_rowconfigure(0, weight=0)
@@ -159,7 +175,7 @@ class TestEndPoint(tk.Frame):
         with obtener_conexion() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT id, alias, url, parametros, download_url, ambiente FROM endpoints")
+                "SELECT id, alias, url, parametros, download_url, ambiente FROM anexos")
             rows = cursor.fetchall()
             for row in rows:
                 self.tree_endpoints.insert("", END, values=row)
@@ -189,10 +205,12 @@ class TestEndPoint(tk.Frame):
             success = False
             while retry < retry_count and not success:
                 try:
-                    created_file = f"{alias}.txt"
-                    command = ["curl", "-o", created_file, "-k", url + params]
+                    created_file = f'{alias}.txt'
+                    command = ["curl", "-o", created_file,
+                               "-k", f"{url}{params}"]
+                    self.logger.info("Ejecutando comando: %s", command)
                     process = subprocess.Popen(
-                        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+                        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     stdout, stderr = process.communicate()
                     if process.returncode == 0:
                         end_time = datetime.now()
@@ -211,29 +229,31 @@ class TestEndPoint(tk.Frame):
                             generated_filename = f.readline().strip()
 
                         self.status_text.insert(
-                            tk.END, f"{datetime.now(
-                            )} - Se ha generado el reporte {alias} en {
-                                elapsed_time_formatted} segundos\n"
-                        )
+                            tk.END, f"{datetime.now()} - Se ha generado el reporte {
+                                alias} en {elapsed_time_formatted} segundos\n")
 
                         # Registrar el resultado en el log y añadir el nombre
                         # del archivo generado por el endpoint
                         self.save_result_to_csv(
+                            env,
                             alias,
                             start_time,
                             end_time,
                             elapsed_time_formatted,
                             "Completado",
-                            generated_filename)
+                            generated_filename
+                        )
                         success = True
 
                         if success:
                             try:
                                 download_command = [
-                                    "curl", "-O", "-k", download + generated_filename]
+                                    "curl", "-O", "-k", f"{download}{generated_filename}"]
+                                self.logger.info(
+                                    "Ejecutando comando: %s", download_command)
                                 process = subprocess.Popen(
                                     download_command, stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE, shell=True)
+                                    stderr=subprocess.PIPE)
                                 stdout, stderr = process.communicate()
                                 if process.returncode == 0:
                                     end_time = datetime.now()
@@ -249,12 +269,12 @@ class TestEndPoint(tk.Frame):
                                     self.status_text.insert(
                                         tk.END, f"{datetime.now()} - Se ha descargado el reporte {
                                             generated_filename} en {
-                                                elapsed_time_formatted} segundos\n"
-                                    )
+                                                elapsed_time_formatted} segundos\n")
 
                                     # Registrar el resultado en el log y añadir el nombre
                                     # del archivo generado por el endpoint
                                     self.save_result_to_csv(
+                                        env,
                                         alias,
                                         start_time,
                                         end_time,
@@ -262,17 +282,17 @@ class TestEndPoint(tk.Frame):
                                         "Descargado",
                                         generated_filename)
                                 else:
-                                    self.status_text.insert(tk.END,
-                                                            f"Error al descargar el reporte {
-                                                                generated_filename}: {
-                                                                    stderr.decode()}\n")
+                                    self.status_text.insert(END, f"Error al descargar el reporte {
+                                                            generated_filename}: {
+                                                                stderr.decode()}\n")
                             except Exception as e:
                                 self.status_text.insert(tk.END, f"Error al descargar el reporte {
                                                         generated_filename}: {str(e)}\n")
                                 self.logger.info("Error al descargar reporte.")
                             self.logger.info(
                                 "Reporte %s descargado.", generated_filename)
-
+                        self.logger.info(
+                            "Borrando: %s", created_file)
                         # Eliminar el archivo para evitar acumulación de archivos basura
                         if os.path.exists(created_file):
                             os.remove(created_file)
@@ -296,14 +316,18 @@ class TestEndPoint(tk.Frame):
         messagebox.showinfo("Éxito", "Prueba completada.")
         self.logger.info("Prueba completada.")
 
-    def save_result_to_csv(self, alias, start_time, end_time, elapsed_time_formatted,
+    def save_result_to_csv(self, env, alias, start_time, end_time, elapsed_time_formatted,
                            status, generated_filename):
         """Función para almacenar el resultado de la prueba en un CSV"""
         current_date = datetime.now().strftime("%Y-%m-%d")
         csv_filename = f"endpoint_log_{current_date}.csv"
         with open(csv_filename, 'a', newline='', encoding="latin-1") as csvfile:
             csv_writer = csv.writer(csvfile)
-            csv_writer.writerow([alias, start_time.strftime("%H:%M:%S"), end_time.strftime(
+            csv_writer.writerow([env, alias, start_time.strftime("%H:%M:%S"), end_time.strftime(
                 "%H:%M:%S"), elapsed_time_formatted, status, generated_filename])
         self.logger.info("Registro de prueba guardado en %s: %s, %s, %s, %s, %s",
                          csv_filename, alias, start_time, end_time, elapsed_time_formatted, status)
+
+    def clean_screen(self):
+        """Limpiar los Combobox y el Text widget status_text"""
+        self.status_text.delete('1.0', END)  # Limpiar Text widget

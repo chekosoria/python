@@ -2,11 +2,15 @@
 import tkinter as tk
 from menus import crear_menus
 from frames.app_home import Home
-from frames.app_add_endpoint import AddEndPoint
-from frames.app_edit_endpoint import EditEndPoint
-from frames.app_test_endpoint import TestEndPoint
-from frames.app_compare_report import CompareReport
-from frames.app_batch_test import BatchTest
+from frames.anexos_lote.al_add_endpoint import AddEndPointAl
+from frames.anexos_lote.al_edit_endpoint import EditEndPointAl
+from frames.anexos_lote.al_test_endpoint import TestEndPointAl
+from frames.anexos_lote.al_batch_test import BatchTestAl
+from frames.anexos.ai_add_endpoint import AddEndPointAi
+from frames.anexos.ai_edit_endpoint import EditEndPointAi
+from frames.anexos.ai_test_endpoint import TestEndPointAi
+from frames.anexos.ai_batch_test import BatchTestAi
+from frames.varios.app_compare_report import CompareReport
 from logging_config import configurar_logger
 
 
@@ -29,7 +33,16 @@ class Genos(tk.Tk):
 
     def crear_frames(self):
         """Método para crear frames"""
-        for F in (Home, AddEndPoint, EditEndPoint, TestEndPoint, CompareReport, BatchTest):
+        for F in (Home,
+                  AddEndPointAl,
+                  EditEndPointAl,
+                  TestEndPointAl,
+                  BatchTestAl,
+                  AddEndPointAi,
+                  EditEndPointAi,
+                  TestEndPointAi,
+                  BatchTestAi,
+                  CompareReport):
             page_name = F.__name__
             frame = F(parent=self, controller=self)
             self.frames[page_name] = frame

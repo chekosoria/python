@@ -85,14 +85,20 @@ class AddEndPoint(tk.Frame):
         # Ruta del directorio actual
         current_directory = os.path.dirname(os.path.realpath(__file__))
 
+        # Ruta del directorio principal
+        pack_directory = os.path.abspath(os.path.join(current_directory, '..'))
+
+        # Ruta del directorio media
+        media_directory = os.path.join(pack_directory, 'media')
+
         # Cargar y convertir los iconos
-        save_icon_path = os.path.join(current_directory, "save.png")
+        save_icon_path = os.path.join(media_directory, "save.png")
         save_image = Image.open(save_icon_path)
         save_icon = ImageTk.PhotoImage(save_image)
-        cancel_icon_path = os.path.join(current_directory, "cancel.png")
+        cancel_icon_path = os.path.join(media_directory, "cancel.png")
         cancel_image = Image.open(cancel_icon_path)
         cancel_icon = ImageTk.PhotoImage(cancel_image)
-        icon_clean_path = os.path.join(current_directory, "clean.png")
+        icon_clean_path = os.path.join(media_directory, "clean.png")
         clean_image = Image.open(icon_clean_path)
         clean_icon = ImageTk.PhotoImage(clean_image)
 

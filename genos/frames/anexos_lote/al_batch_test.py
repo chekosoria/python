@@ -42,15 +42,19 @@ def configurar_logger():
     return logger
 
 
-class BatchTest(tk.Frame):
-    """Pantalla para probar Endpoints"""
+class BatchTestAl(tk.Frame):
+    """Pantalla para probar Endpoints de Anexos por lote"""
 
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
         self.logger = logging.getLogger(__name__)
+        self.prod_alias_to_id = {}
+        self.qa_alias_to_id = {}
+        self.prod_env = None
+        self.qa_env = None
         self.logger.info(
-            "Inicializando pantalla para probar Endpoints y comparar reportes")
+            "Inicializando pantalla para probar Endpoints de Anexos por lote PROD vs QA")
 
         # Crear contenedor principal para centrar los elementos
         container = tk.Frame(self)
@@ -58,17 +62,24 @@ class BatchTest(tk.Frame):
 
         # Crear título
         label_titulo = tk.Label(
-            container, text="Prueba completa de Endpoints", font=("Helvetica", 24, "bold"))
+            container, text="Prueba de Endpoints de Anexos por lote PROD vs QA",
+            font=("Helvetica", 24, "bold"))
         label_titulo.grid(row=0, column=0, columnspan=2, pady=20)
 
         # Ruta del directorio actual
         current_directory = os.path.dirname(os.path.realpath(__file__))
 
+        # Ruta del directorio principal
+        pack_directory = os.path.abspath(os.path.join(current_directory, '..'))
+
+        # Ruta del directorio media
+        media_directory = os.path.join(pack_directory, 'media')
+
         # Cargar y convertir el icono
-        icon_exe_path = os.path.join(current_directory, "play.png")
+        icon_exe_path = os.path.join(media_directory, "play.png")
         exe_image = Image.open(icon_exe_path)
         exe_icon = ImageTk.PhotoImage(exe_image)
-        icon_clean_path = os.path.join(current_directory, "clean.png")
+        icon_clean_path = os.path.join(media_directory, "clean.png")
         clean_image = Image.open(icon_clean_path)
         clean_icon = ImageTk.PhotoImage(clean_image)
 
@@ -89,27 +100,32 @@ class BatchTest(tk.Frame):
 
         # Widgets para ingresar alias, URL y parámetros del endpoint
         self.label_first_endpoint = tk.Label(
-            container, text="Seleccione el Endpoint base:", font=("Helvetica", 10, "bold"))
+            container, text="Seleccione el Endpoint de PROD:", font=("Helvetica", 10, "bold"))
         self.combo_first_endpoint = ttk.Combobox(container,
                                                  width=30,
                                                  )
         self.label_second_endpoint = tk.Label(
-            container, text="Seleccione el Endpint a comparar:", font=("Helvetica", 10, "bold"))
+            container, text="Seleccione el Endpint de QA:", font=("Helvetica", 10, "bold"))
         self.combo_second_endpoint = ttk.Combobox(container,
                                                   width=30,
                                                   )
 
         # Ubicar los widgets en el contenedor
-        self.label_first_endpoint.grid(row=3, column=0, sticky="e")
-        self.combo_first_endpoint.grid(row=3, column=1, sticky="w")
-        self.label_second_endpoint.grid(row=4, column=0, sticky="e")
-        self.combo_second_endpoint.grid(row=4, column=1, sticky="w")
-        self.button_exe.grid(row=5, column=0, columnspan=2, pady=5)
-        self.label_status.grid(row=6, column=0, sticky="w")
-        self.status_text.grid(row=7, column=0, columnspan=2,
+
+        self.label_first_endpoint.grid(
+            row=3, column=0, padx=5, pady=5, sticky="w")
+        self.combo_first_endpoint.grid(row=4, columnspan=3,
+                                       padx=5, pady=5, sticky="nsew")
+        self.label_second_endpoint.grid(
+            row=5, column=0, padx=5, pady=5, sticky="w")
+        self.combo_second_endpoint.grid(row=6, columnspan=3,
+                                        padx=5, pady=5, sticky="nsew")
+        self.button_exe.grid(row=7, column=0, columnspan=2, pady=5)
+        self.label_status.grid(row=8, column=0, sticky="w")
+        self.status_text.grid(row=9, column=0, columnspan=2,
                               padx=5, pady=5, sticky="nsew")
         self.button_clean.grid(
-            row=8, column=0, columnspan=2, pady=5)
+            row=10, column=0, columnspan=2, pady=5)
 
         # Centrar el contenedor en la ventana principal
         container.grid_rowconfigure(0, weight=0)
@@ -121,6 +137,8 @@ class BatchTest(tk.Frame):
         container.grid_rowconfigure(6, weight=0)
         container.grid_rowconfigure(7, weight=0)
         container.grid_rowconfigure(8, weight=0)
+        container.grid_rowconfigure(9, weight=0)
+        container.grid_rowconfigure(10, weight=0)
         container.grid_columnconfigure(0, weight=1)
         container.grid_columnconfigure(1, weight=1)
 
@@ -136,28 +154,39 @@ class BatchTest(tk.Frame):
 
     def cargar_endpoints(self):
         """Cargar los endpoints existentes desde la base de datos y actualiza los comboboxes"""
+
         with obtener_conexion() as conn:
             cursor = conn.cursor()
 
-            # Obtener aliases para ambiente 'Prod'
+            # Obtener alias e ID para ambiente 'Prod'
             cursor.execute(
-                "SELECT alias FROM endpoints WHERE ambiente = 'Prod'")
+                "SELECT id, alias, ambiente FROM anexos WHERE ambiente = 'Prod'")
             prod_rows = cursor.fetchall()
-            prod_aliases = [row[0] for row in prod_rows]
-            # self.logger.info(prod_aliases)
+            prod_aliases = [row[1] for row in prod_rows]
+            self.prod_alias_to_id = {row[1]: row[0] for row in prod_rows}
 
-            # Obtener aliases para ambiente 'Qa'
-            cursor.execute("SELECT alias FROM endpoints WHERE ambiente = 'QA'")
+            # Guardar el valor del ambiente en una variable env
+            if prod_rows:
+                # Asignar el valor del ambiente
+                self.prod_env = prod_rows[0][2]
+
+            # Obtener alias e ID para ambiente 'QA'
+            cursor.execute(
+                "SELECT id, alias, ambiente FROM anexos WHERE ambiente = 'QA'")
             qa_rows = cursor.fetchall()
-            qa_aliases = [row[0] for row in qa_rows]
-            # self.logger.info(qa_aliases)
+            qa_aliases = [row[1] for row in qa_rows]
+            self.qa_alias_to_id = {row[1]: row[0] for row in qa_rows}
+
+            # Guardar el valor del ambiente en una variable env
+            if qa_rows:
+                self.qa_env = qa_rows[0][2]  # Asignar el valor del ambiente
 
         # Actualizar los valores de los comboboxes
-            self.combo_first_endpoint['values'] = prod_aliases
-            self.combo_second_endpoint['values'] = qa_aliases
+        self.combo_first_endpoint['values'] = prod_aliases
+        self.combo_second_endpoint['values'] = qa_aliases
 
-            self.combo_first_endpoint.set('')  # Limpiar selección actual
-            self.combo_second_endpoint.set('')  # Limpiar selección actual
+        self.combo_first_endpoint.set('')  # Limpiar selección actual
+        self.combo_second_endpoint.set('')  # Limpiar selección actual
 
     def test_endpoints(self):
         """Función para probar endpoints"""
@@ -169,20 +198,35 @@ class BatchTest(tk.Frame):
                 "Error", "Seleccione ambos endpoints para probar.")
             return
 
+        base_id = self.prod_alias_to_id.get(base_alias)
+        compare_id = self.qa_alias_to_id.get(compare_alias)
+
+        if not base_id or not compare_id:
+            messagebox.showerror(
+                "Error", "No se pudo encontrar el ID para los alias seleccionados.")
+            return
+
+        # Usar los valores de ambiente correspondientes
+        base_env = self.prod_env
+        compare_env = self.qa_env
+
         # Comparar los archivos generados
-        base_dir = self.run_endpoint_test(base_alias, "_base")
-        compare_dir = self.run_endpoint_test(compare_alias, "")
-        result_dir = "test_results"
+        base_dir = self.run_endpoint_test(
+            base_id, base_alias, "_prod", base_env)
+        compare_dir = self.run_endpoint_test(
+            compare_id, compare_alias, "_qa", compare_env)
+        result_dir = "resultados"
 
         # Comparar los archivos generados
         self.compare_files(base_dir, compare_dir, result_dir)
 
-    def run_endpoint_test(self, alias, suffix):
+    def run_endpoint_test(self, endpoint_id, alias, suffix, env):
         """Ejecutar prueba para un endpoint específico y descargar el archivo generado"""
         with obtener_conexion() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT url, parametros, download_url FROM endpoints WHERE alias = ?", (alias,))
+                "SELECT url, parametros, download_url FROM anexos_lote WHERE id = ?",
+                (endpoint_id,))
             endpoint_data = cursor.fetchone()
             if not endpoint_data:
                 self.status_text.insert(tk.END, f"No se encontró el endpoint {
@@ -192,7 +236,7 @@ class BatchTest(tk.Frame):
             url, params, download = endpoint_data
             start_time = datetime.now()
             self.status_text.insert(
-                END, f"Iniciando prueba del endpoint {alias}...\n")
+                tk.END, f"Iniciando prueba del endpoint {alias}...\n")
             self.status_text.see(tk.END)
             self.master.update()
             retry_count = 3  # Número máximo de reintentos
@@ -204,6 +248,7 @@ class BatchTest(tk.Frame):
                 try:
                     created_file = f"{alias}{suffix}.txt"
                     command = ["curl", "-o", created_file, "-k", url + params]
+                    self.logger.info("Ejecutando comando: %s", command)
                     process = subprocess.Popen(
                         command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
                     stdout, stderr = process.communicate()
@@ -219,21 +264,28 @@ class BatchTest(tk.Frame):
                             generated_filename = f.readline().strip()
 
                         self.status_text.insert(
-                            END, f"{datetime.now(
-                            )} - Se ha generado el reporte {
-                                alias} en {elapsed_time_formatted} segundos\n"
+                            tk.END, f"{datetime.now(
+                            )} - Se ha generado el reporte {alias} en {
+                                elapsed_time_formatted} segundos\n"
                         )
                         self.save_result_to_csv(
-                            alias, start_time, end_time,
-                            elapsed_time_formatted, "Completado", generated_filename)
+                            env,
+                            alias,
+                            start_time,
+                            end_time,
+                            elapsed_time_formatted,
+                            "Completado",
+                            generated_filename)
                         success = True
 
                         if success:
                             download_command = [
                                 "curl", "-O", "-k", download + generated_filename]
+                            self.logger.info(
+                                "Ejecutando comando: %s", download_command)
                             process = subprocess.Popen(
-                                download_command,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+                                download_command, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, shell=True)
                             stdout, stderr = process.communicate()
                             if process.returncode == 0:
                                 end_time = datetime.now()
@@ -244,12 +296,17 @@ class BatchTest(tk.Frame):
                                 elapsed_time_formatted = str(elapsed_timedelta)
 
                                 self.status_text.insert(
-                                    END, f"{datetime.now()} - Se ha descargado el reporte {
+                                    tk.END, f"{datetime.now()} - Se ha descargado el reporte {
                                         generated_filename} en {elapsed_time_formatted} segundos\n"
                                 )
                                 self.save_result_to_csv(
-                                    alias, start_time, end_time,
-                                    elapsed_time_formatted, "Descargado", generated_filename)
+                                    env,
+                                    alias,
+                                    start_time,
+                                    end_time,
+                                    elapsed_time_formatted,
+                                    "Descargado",
+                                    generated_filename)
 
                                 with zipfile.ZipFile(generated_filename, 'r') as zip_ref:
                                     extract_dir = f"endpoint{suffix}"
@@ -264,14 +321,13 @@ class BatchTest(tk.Frame):
                                             with source, target:
                                                 shutil.copyfileobj(
                                                     source, target)
-                                    self.status_text.insert(END,
-                                                            f"Reportes extraidos en {
-                                                                extract_dir}...\n")
+                                    self.status_text.insert(
+                                        tk.END, f"Reportes extraidos en {extract_dir}...\n")
                                     self.logger.info(
                                         "Reportes extraidos en %s", extract_dir)
 
                             else:
-                                self.status_text.insert(END, f"Error al descargar el reporte {
+                                self.status_text.insert(tk.END, f"Error al descargar el reporte {
                                                         generated_filename}: {stderr.decode()}\n")
                             self.logger.info(
                                 "Reporte %s descargado.", generated_filename)
@@ -279,19 +335,19 @@ class BatchTest(tk.Frame):
                         if os.path.exists(created_file):
                             os.remove(created_file)
                     else:
-                        self.status_text.insert(END, f"Error al generar el reporte {
+                        self.status_text.insert(tk.END, f"Error al generar el reporte {
                                                 alias}: {stderr.decode()}\n")
                         retry += 1
                         if retry < retry_count:
                             self.status_text.insert(
-                                END, f"Reintentando ({retry}/{retry_count})...\n")
+                                tk.END, f"Reintentando ({retry}/{retry_count})...\n")
                 except Exception as e:
                     self.status_text.insert(
-                        END, f"Error al generar el reporte {alias}: {str(e)}\n")
+                        tk.END, f"Error al generar el reporte {alias}: {str(e)}\n")
                     retry += 1
                     if retry < retry_count:
                         self.status_text.insert(
-                            END, f"Reintentando ({retry}/{retry_count})...\n")
+                            tk.END, f"Reintentando ({retry}/{retry_count})...\n")
             if not success:
                 self.status_text.insert(tk.END, f"No se pudo generar el reporte {
                                         alias} después de {retry_count} intentos.\n")
@@ -299,14 +355,14 @@ class BatchTest(tk.Frame):
 
             return extract_dir
 
-    def save_result_to_csv(self, alias, start_time, end_time,
+    def save_result_to_csv(self, env, alias, start_time, end_time,
                            elapsed_time_formatted, status, generated_filename):
         """Función para almacenar el resultado de la prueba en un CSV"""
         current_date = datetime.now().strftime("%Y-%m-%d")
         csv_filename = f"endpoint_log_{current_date}.csv"
         with open(csv_filename, 'a', newline='', encoding="latin-1") as csvfile:
             csv_writer = csv.writer(csvfile)
-            csv_writer.writerow([alias, start_time.strftime("%H:%M:%S"), end_time.strftime(
+            csv_writer.writerow([env, alias, start_time.strftime("%H:%M:%S"), end_time.strftime(
                 "%H:%M:%S"), elapsed_time_formatted, status, generated_filename])
         self.logger.info("Registro de prueba guardado en %s: %s, %s, %s, %s, %s",
                          csv_filename, alias, start_time, end_time, elapsed_time_formatted, status)
@@ -376,9 +432,11 @@ class BatchTest(tk.Frame):
                             base_file_path, result_path_with_format)
                     else:
                         self.status_text.insert(
-                            END, f"No se encontraron diferencias entre {base_file_path} y {compare_file_path}\n")
+                            END, f"No se encontraron diferencias entre {
+                                base_file_path} y {compare_file_path}\n")
                         self.logger.info(
-                            "No se encontraron diferencias entre %s y %s", base_file_path, compare_file_path)
+                            "No se encontraron diferencias entre %s y %s",
+                            base_file_path, compare_file_path)
 
                 except (pd.errors.ParserError, openpyxl.utils.exceptions.InvalidFileException) as e:
                     messagebox.showerror(

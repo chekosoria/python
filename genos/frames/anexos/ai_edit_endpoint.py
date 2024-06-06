@@ -34,7 +34,7 @@ def configurar_logger():
     return logger
 
 
-class EditEndPoint(tk.Frame):
+class EditEndPointAi(tk.Frame):
     """Pantalla editar Endpoints"""
 
     def __init__(self, parent, controller):
@@ -42,7 +42,7 @@ class EditEndPoint(tk.Frame):
         self.controller = controller
         self.logger = logging.getLogger(__name__)
         self.logger.info(
-            "Inicializando pantalla para editar Endpoints")
+            "Inicializando pantalla para editar Endpoints de Anexos individuales")
 
         # Crear contenedor principal para centrar los elementos
         container = tk.Frame(self)
@@ -50,7 +50,8 @@ class EditEndPoint(tk.Frame):
 
         # Crear título
         label_titulo = tk.Label(
-            container, text="Editar Endpoints", font=("Helvetica", 24, "bold"))
+            container, text="Editar Endpoints de Anexos individuales",
+            font=("Helvetica", 24, "bold"))
         label_titulo.grid(row=0, columnspan=3, pady=5, sticky="n")
 
         # Widgets para ingresar alias, URL y parámetros del endpoint
@@ -85,14 +86,20 @@ class EditEndPoint(tk.Frame):
         # Ruta del directorio actual
         current_directory = os.path.dirname(os.path.realpath(__file__))
 
+        # Ruta del directorio principal
+        pack_directory = os.path.abspath(os.path.join(current_directory, '..'))
+
+        # Ruta del directorio media
+        media_directory = os.path.join(pack_directory, 'media')
+
         # Cargar y convertir los iconos
-        save_icon_path = os.path.join(current_directory, "save.png")
+        save_icon_path = os.path.join(media_directory, "save.png")
         save_image = Image.open(save_icon_path)
         save_icon = ImageTk.PhotoImage(save_image)
-        cancel_icon_path = os.path.join(current_directory, "cancel.png")
+        cancel_icon_path = os.path.join(media_directory, "cancel.png")
         cancel_image = Image.open(cancel_icon_path)
         cancel_icon = ImageTk.PhotoImage(cancel_image)
-        icon_clean_path = os.path.join(current_directory, "clean.png")
+        icon_clean_path = os.path.join(media_directory, "clean.png")
         clean_image = Image.open(icon_clean_path)
         clean_icon = ImageTk.PhotoImage(clean_image)
 
@@ -193,7 +200,7 @@ class EditEndPoint(tk.Frame):
         with obtener_conexion() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT id, alias, url, parametros, download_url, ambiente FROM endpoints")
+                "SELECT id, alias, url, parametros, download_url, ambiente FROM anexos")
             rows = cursor.fetchall()
             for row in rows:
                 self.tree_endpoints.insert("", tk.END, values=row)
@@ -237,7 +244,7 @@ class EditEndPoint(tk.Frame):
                 with obtener_conexion() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
-                        """UPDATE endpoints 
+                        """UPDATE anexos 
                            SET alias = ?, url = ?, parametros = ?, download_url = ?, ambiente = ?
                            WHERE id = ?""",
                         (alias, url, params, download_url, env, self.selected_id))

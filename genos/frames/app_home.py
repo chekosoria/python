@@ -7,7 +7,7 @@ from PIL import Image, ImageTk
 
 def configurar_logger():
     """Función para configurar log"""
-    SISTEMA = "Genos"
+    sistema = "Genos"
 
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
@@ -17,7 +17,7 @@ def configurar_logger():
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     # Manejador para el archivo principal
-    file_handler = logging.FileHandler(f"{SISTEMA.lower()}.log")
+    file_handler = logging.FileHandler(f"{sistema.lower()}.log")
     file_handler.setFormatter(formatter)
 
     # Manejador para la consola
@@ -49,9 +49,14 @@ class Home(tk.Frame):
         frame_imagen = tk.Frame(self)
         frame_imagen.pack(pady=20)
 
-        # Cargar y mostrar imagen
+        # Ruta del directorio actual
         current_directory = os.path.dirname(os.path.realpath(__file__))
-        image_path = os.path.join(current_directory, "bug.jpg")
+
+        # Ruta del directorio media
+        media_directory = os.path.join(current_directory, 'media')
+
+        # Cargar y mostrar imagen
+        image_path = os.path.join(media_directory, "bug.jpg")
         self.cargar_imagen(image_path, frame_imagen)
 
         # Centrar el contenedor en la ventana principal

@@ -15,10 +15,35 @@ def inicializar_base_de_datos():
     db_path = obtener_ruta_db()
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
+        # Tabla para anexos por lote
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS anexos_lote (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                alias TEXT NOT NULL,
+                url TEXT NOT NULL,
+                parametros TEXT NOT NULL,
+                download_url TEXT NOT NULL,
+                ambiente TEXT NOT NULL
+            )
+        """)
+        conn.commit()
+        # Tabla para anexos individuales
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS anexos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                alias TEXT NOT NULL,
+                url TEXT NOT NULL,
+                parametros TEXT NOT NULL,
+                download_url TEXT NOT NULL,
+                ambiente TEXT NOT NULL
+            )
+        """)
+        conn.commit()
+        # Tabla para otros reportes
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS endpoints (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                alias TEXT UNIQUE NOT NULL,
+                alias TEXT NOT NULL,
                 url TEXT NOT NULL,
                 parametros TEXT NOT NULL,
                 download_url TEXT NOT NULL,
